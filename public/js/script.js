@@ -160,6 +160,7 @@ function generateMandala() {
   }).join('');
 
   mandala.innerHTML = `
+    <svg width="600" height="600" xmlns="http://www.w3.org/2000/svg">
       <rect width="600" height="600" fill="#ffffff" />
       <defs>
         <clipPath id="mandalaClip">
@@ -167,8 +168,8 @@ function generateMandala() {
         </clipPath>
       </defs>
       ${shapesHTML}
+    </svg>
   `;
-
   // Draw the mandala on the canvas
   const svgData = new XMLSerializer().serializeToString(mandala.querySelector('svg'));
   const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
