@@ -21,14 +21,14 @@ let currentColor = '#000000';
 let currentLineWidth = 1;
 let startPoint = null;
 let isDrawingMode = false;
-let selectedColor = '#000000'; 
+let selectedColor = '#000000';
 
 const canvas = document.getElementById('mandalaCanvas');
 const ctx = canvas.getContext('2d');
 const gridCanvas = document.getElementById('gridCanvas');
 const gridCtx = gridCanvas.getContext('2d');
 
-const scaleFactor = 3; 
+const scaleFactor = 3;
 const displayWidth = window.innerWidth > 640 ? 600 : 300;
 const displayHeight = window.innerWidth > 640 ? 600 : 300;
 
@@ -178,7 +178,7 @@ function generateMandala() {
   img.src = url;
   img.onload = () => {
     ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
-    URL.revokeObjectURL(url); 
+    URL.revokeObjectURL(url);
   };
   canvas.addEventListener('click', (e) => {
     const x = Math.floor(e.offsetX * scaleFactor);
@@ -189,9 +189,9 @@ function generateMandala() {
 
 
 function drawGridlines() {
-  const gridSize = 20; 
-  gridCtx.strokeStyle = '#e0e0e0'; 
-  gridCtx.lineWidth = 0.5; 
+  const gridSize = 20;
+  gridCtx.strokeStyle = '#e0e0e0';
+  gridCtx.lineWidth = 0.5;
 
   // Clear the grid canvas
   gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
@@ -339,13 +339,13 @@ function Curve(parent, x1, y1) {
   this.path.setAttribute("stroke-width", currentLineWidth);
   drawingLayer.appendChild(this.path);
 
-  this.to = function(x, y) {
+  this.to = function (x, y) {
     this.target.x = x;
     this.target.y = y;
     this.updatePath();
   };
 
-  this.arc = function(x, y) {
+  this.arc = function (x, y) {
     // Interpolate the control point
     const t = 1.5; // Adjust this value to change how closely the curve follows the mouse
     this.control.x = this.origin.x + (x - this.origin.x) * t;
@@ -353,16 +353,16 @@ function Curve(parent, x1, y1) {
     this.updatePath();
   };
 
-  this.preview = function() {
+  this.preview = function () {
     this.path.setAttribute("stroke", COLORS.preview);
     this.updatePath();
   };
 
-  this.updatePath = function() {
+  this.updatePath = function () {
     this.path.setAttribute("d", `M${this.origin.x},${this.origin.y} Q${this.control.x},${this.control.y} ${this.target.x},${this.target.y}`);
   };
 
-  this.finalize = function() {
+  this.finalize = function () {
     this.path.setAttribute("stroke", currentColor);
   };
 }
@@ -787,7 +787,7 @@ function addShapeToDrawingLayer(x, y, shapeType) {
     custom15: { tag: 'path', attrs: { d: "M50.7143 0H0.71429V50C0.71429 75.462 19.7466 96.4788 44.361 99.6002C19.4015 102.402 4.22025e-06 123.578 2.18557e-06 149.286L0 199.286H50C75.462 199.286 96.4788 180.253 99.6002 155.639C102.402 180.599 123.578 200 149.286 200H199.286V150C199.286 124.538 180.253 103.521 155.639 100.4C180.599 97.5984 200 76.422 200 50.7143V0.714286L150 0.714284C124.538 0.714282 103.521 19.7466 100.4 44.361C97.5984 19.4015 76.422 0 50.7143 0Z" } },
     custom16: { tag: 'path', attrs: { d: "M100.387 91.8532C96.2415 40.435 53.2 0 0.714282 0C0.714282 52.2424 40.7753 95.1281 91.8532 99.6128C40.435 103.758 -5.33517e-06 146.8 -7.62939e-06 199.286C52.2424 199.286 95.1281 159.225 99.6128 108.147C103.758 159.565 146.8 200 199.286 200C199.286 147.758 159.225 104.872 108.147 100.387C159.565 96.2416 200 53.2 200 0.714286C147.758 0.714283 104.872 40.7753 100.387 91.8532ZM99.9975 100.002C99.9991 100.002 100.001 100.003 100.002 100.003L100.003 99.9975C100.001 99.9975 99.9992 99.9975 99.9975 99.9975C99.9975 99.9991 99.9975 100.001 99.9975 100.002Z" } },
     custom17: { tag: 'path', attrs: { d: "M123.344 200C100 200 100 143.969 76.6558 143.969C49.7872 143.969 0 150.205 0 123.338C0 99.9951 56.0242 99.995 56.0242 76.652C56.0242 49.7946 49.7872 0 76.6558 0C100 0 100 56.0313 123.344 56.0313C150.213 56.0313 200 49.7946 200 76.652C200 99.995 143.966 99.9951 143.966 123.338C143.966 150.205 150.213 200 123.344 200Z" } }
-};
+  };
 
   const { tag, attrs } = shapeAttributes[shapeType];
   const shape = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -838,7 +838,7 @@ function makeShapeInteractive(shape) {
           const currentScaleX = parseFloat(target.getAttribute('data-scale-x') || scale);
           const currentScaleY = parseFloat(target.getAttribute('data-scale-y') || scale);
           const currentRotation = parseFloat(target.getAttribute('data-rotation') || 0);
-          
+
           target.setAttribute('transform', `translate(${x}, ${y}) scale(${currentScaleX}, ${currentScaleY}) rotate(${currentRotation})`);
           target.setAttribute('data-x', x);
           target.setAttribute('data-y', y);
@@ -942,7 +942,7 @@ function initializeEventListeners() {
   document.querySelectorAll('[data-tool]').forEach(tool => {
     tool.addEventListener('click', (e) => {
       const clickedTool = e.currentTarget.getAttribute('data-tool');
-      
+
       if (clickedTool === 'random') {
         generateRandomMandala();
         return;
@@ -1050,10 +1050,10 @@ dragModeBtn.addEventListener('click', () => {
   toggleMode();
 });
 
-document.querySelectorAll('input[type="range"]').forEach(function(input) {
+document.querySelectorAll('input[type="range"]').forEach(function (input) {
   input.style.setProperty('--range-progress', '0%');
 
-  input.addEventListener('input', function() {
+  input.addEventListener('input', function () {
     var progress = (this.value - this.min) / (this.max - this.min) * 100;
     this.style.setProperty('--range-progress', `${progress}%`);
   });
@@ -1067,7 +1067,7 @@ document.querySelectorAll('input[type="range"]').forEach(function(input) {
 
 function generateRandomMandala() {
   clearShapes();
-  
+
   // Generate a random number of sectors
   const randomSectors = rndInt(5, 10);
   segments = randomSectors;
@@ -1077,24 +1077,24 @@ function generateRandomMandala() {
   const trianglePath = triangleTemplate.querySelector('path');
   const trianglePathD = trianglePath.getAttribute('d');
   const match = trianglePathD.match(/M([\d.]+),([\d.]+)/);
-  
+
   if (match) {
     const triangleBottomX = parseFloat(match[1]);
     const triangleBottomY = parseFloat(match[2]);
-    
+
     // Generate flower with size information
     const { flower, totalRadius } = generateFlower(randomSectors);
-    
+
     // Position the flower at the bottom center of the triangle
     const xPosition = triangleBottomX - totalRadius;
     const yPosition = triangleBottomY - totalRadius;
-     // Adjust this multiplier to move the flower up or down
-    
+    // Adjust this multiplier to move the flower up or down
+
     flower.setAttribute('transform', `translate(${xPosition}, ${yPosition})`);
-        drawingLayer.appendChild(flower);
+    drawingLayer.appendChild(flower);
 
     drawingLayer.appendChild(flower);
-    
+
     updatePaths();
     generateMandala();
     mandala.classList.add('random-mandala');
@@ -1108,7 +1108,7 @@ function updateSegmentsUI() {
   // Update the slider and displayed value
   slicesSlider.value = segments;
   slicesValue.textContent = segments;
-  
+
   // Update the slider's visual progress
   const progress = (segments - slicesSlider.min) / (slicesSlider.max - slicesSlider.min) * 100;
   slicesSlider.style.setProperty('--range-progress', `${progress}%`);
@@ -1116,7 +1116,7 @@ function updateSegmentsUI() {
 
 
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   initializeEventListeners();
   Array.from(drawingLayer.children).forEach(makeShapeInteractive);
 
@@ -1129,49 +1129,49 @@ document.addEventListener('DOMContentLoaded', function() {
   const outputDownloadBtn = document.getElementById('outputdownloadBtn');
   const outputDownloadOptions = document.getElementById('outputdownloadOptions');
 
-  layoutDownloadBtn.addEventListener('click', function(event) {
-      if (event.target.closest('svg:last-child')) {
-          layoutDownloadOptions.classList.toggle('hidden');
-      } else {
-          downloadCanvasFromSVG('mandala', 'layout.png');
-      }
+  layoutDownloadBtn.addEventListener('click', function (event) {
+    if (event.target.closest('svg:last-child')) {
+      layoutDownloadOptions.classList.toggle('hidden');
+    } else {
+      downloadCanvasFromSVG('mandala', 'layout.png');
+    }
   });
 
-  outputDownloadBtn.addEventListener('click', function(event) {
-      if (event.target.closest('svg:last-child')) {
-          outputDownloadOptions.classList.toggle('hidden');
-      } else {
-          downloadCanvas('mandalaCanvas', 'output.png');
-      }
+  outputDownloadBtn.addEventListener('click', function (event) {
+    if (event.target.closest('svg:last-child')) {
+      outputDownloadOptions.classList.toggle('hidden');
+    } else {
+      downloadCanvas('mandalaCanvas', 'output.png');
+    }
   });
 
-  document.addEventListener('click', function(event) {
-      if (!layoutDownloadBtn.contains(event.target) && !layoutDownloadOptions.contains(event.target)) {
-          layoutDownloadOptions.classList.add('hidden');
-      }
-      if (!outputDownloadBtn.contains(event.target) && !outputDownloadOptions.contains(event.target)) {
-          outputDownloadOptions.classList.add('hidden');
-      }
-  });
-
-  document.getElementById('downloadLayoutSVG').addEventListener('click', function() {
-      downloadSVGFile('mandala', 'layout.svg');
+  document.addEventListener('click', function (event) {
+    if (!layoutDownloadBtn.contains(event.target) && !layoutDownloadOptions.contains(event.target)) {
       layoutDownloadOptions.classList.add('hidden');
-  });
-
-  document.getElementById('downloadLayoutPDF').addEventListener('click', function() {
-      downloadPDFFromSVG('mandala', 'layout.pdf');
-      layoutDownloadOptions.classList.add('hidden');
-  });
-
-  document.getElementById('downloadOutputPDF').addEventListener('click', function() {
-      downloadPDF('mandalaCanvas', 'output.pdf');
+    }
+    if (!outputDownloadBtn.contains(event.target) && !outputDownloadOptions.contains(event.target)) {
       outputDownloadOptions.classList.add('hidden');
+    }
+  });
+
+  document.getElementById('downloadLayoutSVG').addEventListener('click', function () {
+    downloadSVGFile('mandala', 'layout.svg');
+    layoutDownloadOptions.classList.add('hidden');
+  });
+
+  document.getElementById('downloadLayoutPDF').addEventListener('click', function () {
+    downloadPDFFromSVG('mandala', 'layout.pdf');
+    layoutDownloadOptions.classList.add('hidden');
+  });
+
+  document.getElementById('downloadOutputPDF').addEventListener('click', function () {
+    downloadPDF('mandalaCanvas', 'output.pdf');
+    outputDownloadOptions.classList.add('hidden');
   });
 
   function isMobileDevice() {
     let hasTouchScreen = false;
-  
+
     if ("maxTouchPoints" in navigator) {
       hasTouchScreen = navigator.maxTouchPoints > 0;
     } else if ("msMaxTouchPoints" in navigator) {
@@ -1191,20 +1191,29 @@ document.addEventListener('DOMContentLoaded', function() {
         );
       }
     }
-  
+
     return hasTouchScreen;
   }
 
   if (isMobileDevice()) {
-      var modal = document.getElementById("mobileModal");
-      var continueButton = document.getElementById("continueButton");
+    var modal = document.getElementById("mobileModal");
+    var continueButton = document.getElementById("continueButton");
 
-      modal.classList.remove("hidden");
+    modal.classList.remove("hidden");
 
-      continueButton.addEventListener("click", function() {
-          modal.classList.add("hidden");
-      });
+    continueButton.addEventListener("click", function () {
+      modal.classList.add("hidden");
+    });
   }
+  var isFirefox = typeof InstallTrigger !== 'undefined';
+  if (isFirefox) {
+    document.getElementById('firefoxModal').classList.remove('hidden');
+  }
+
+  // Add event listener to the "Continue Anyway" button
+  document.getElementById('firefoxContinueButton').addEventListener('click', function () {
+    document.getElementById('firefoxModal').classList.add('hidden');
+  });
 });
 
 document.getElementById('navbarToggle').addEventListener('click', function () {
