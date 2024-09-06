@@ -515,7 +515,7 @@ function handleShapeDrawing(e, point) {
     currentPath = document.createElementNS("http://www.w3.org/2000/svg", getShapeElement());
     setShapeAttributes(currentPath, startPoint);
     drawingLayer.appendChild(currentPath);
-  } else if (e.type === 'mousemove' || (e.type === 'touchmove' && isDrawing)) {
+  } else if ((e.type === 'mousemove' || e.type === 'touchmove') && isDrawing) {
     updateShape(currentPath, startPoint, point);
   } else if (['mouseup', 'mouseleave', 'touchend', 'touchcancel'].includes(e.type) && isDrawing) {
     isDrawing = false;
