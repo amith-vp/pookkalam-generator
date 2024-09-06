@@ -431,7 +431,6 @@ const COLORS = {
 
 // Update handleDrawing function
 
-// ... existing code ...
 
 let lastTouchPoint = null;
 
@@ -465,12 +464,11 @@ function handleDrawing(e) {
     handleShapeDrawing(e, point);
   }
 
-  if ((e.type === 'mouseup' ) && currentTool === 'curve' && clickState === 0) {
+  if ((e.type === 'mouseup') && currentTool === 'curve' && clickState === 0) {
     updatePaths();
     generateMandala();
   }
 }
-// ... existing code ...
 
 function handleRotation(e, point) {
   if (e.type === 'mousedown' || e.type === 'touchstart') {
@@ -1231,14 +1229,20 @@ document.addEventListener('DOMContentLoaded', function () {
     outputDownloadOptions.classList.add('hidden');
   });
 
- // ... existing code ...
 
-// ... existing code ...
-  
+});
 
 
 
-  });
+
+document.addEventListener('keydown', function (event) {
+  if (event.ctrlKey && event.key === 'z') {
+    undo();
+  } else if (event.ctrlKey && event.key === 'y') {
+    redo();
+  }
+});
+
 
 document.getElementById('navbarToggle').addEventListener('click', function () {
   const navbarCollapse = document.getElementById('navbarCollapse');
@@ -1249,7 +1253,7 @@ document.getElementById('navbarToggle').addEventListener('click', function () {
 function checkCompatibility() {
   let hasTouchScreen = false;
   let isFirefox = typeof InstallTrigger !== 'undefined';
-  
+
   const modal = document.getElementById("compatibilityModal");
   const message = document.getElementById("compatibilityMessage");
   const continueButton = document.getElementById("continueButton");
@@ -1283,7 +1287,7 @@ function checkCompatibility() {
   continueButton.addEventListener("click", function () {
     modal.classList.add("hidden");
   });
- 
+
 }
 
 
