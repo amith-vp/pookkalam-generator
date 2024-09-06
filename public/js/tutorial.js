@@ -33,11 +33,14 @@ function showInitialIndication() {
     overlay.remove();
     document.querySelectorAll('.highlight-box, .highlight-label, .drag-arrow').forEach(el => el.remove());
     document.removeEventListener('click', removeHighlights);
+    checkCompatibility();
   };
 
   setTimeout(removeHighlights, 10000); // Remove after 10 seconds
   document.addEventListener('click', removeHighlights);
   localStorage.setItem('hasSeenIndication', 'true');
+}else{  
+  checkCompatibility();
 }
 }
 function highlightElement(element, title, description) {
