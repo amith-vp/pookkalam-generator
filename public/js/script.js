@@ -55,7 +55,6 @@ function getPointInSVG(e) {
   return pt.matrixTransform(triangleTemplate.getScreenCTM().inverse());
 }
 
-
 function updatePaths() {
   paths = Array.from(drawingLayer.children).map(child => {
     const clone = child.cloneNode(true);
@@ -67,8 +66,21 @@ function updatePaths() {
   });
   undoStack.push(paths.slice());
   redoStack = [];
+  saveProgressToSessionStorage(); // Save progress to session storage
 }
 
+function saveProgressToSessionStorage() {
+  sessionStorage.setItem('mandalaPaths', JSON.stringify(paths));
+}
+
+function loadProgressFromSessionStorage() {
+  const savedPaths = sessionStorage.getItem('mandalaPaths');
+  if (savedPaths) {
+    paths = JSON.parse(savedPaths);
+    drawingLayer.innerHTML = paths.join('');
+    generateMandala();
+  }
+}
 
 function updateTriangleTemplate() {
   const angle = 360 / segments;
@@ -670,6 +682,7 @@ function getTriangleAnglePoint() {
 function clearShapes() {
   paths = [];
   drawingLayer.innerHTML = '';
+  sessionStorage.removeItem('mandalaPaths'); // Clear session storage
   generateMandala();
 }
 
@@ -1186,6 +1199,7 @@ function updateSegmentsUI() {
 
 document.addEventListener('DOMContentLoaded', function () {
 
+  loadProgressFromSessionStorage();
   initializeEventListeners();
   Array.from(drawingLayer.children).forEach(makeShapeInteractive);
 
