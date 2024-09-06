@@ -227,98 +227,113 @@ document.getElementById('gridlines').addEventListener('change', (e) => {
     gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
   }
 });
+function floodfill(rgba, width, height, x, y, color) {
+  var visited = new Uint8Array(width * height);
+  var queue = new Int32Array(2 * width * height);
 
-function floodFill(x, y) {
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const pixelData = imageData.data;
-  const canvasWidth = canvas.width;
-  const canvasHeight = canvas.height;
+  // Get the color of the starting pixel
+  var startColor = [
+    rgba[(y * width + x) * 4 + 0],
+    rgba[(y * width + x) * 4 + 1],
+    rgba[(y * width + x) * 4 + 2],
+    rgba[(y * width + x) * 4 + 3]
+  ];
 
-  const startColor = getPixelColor(pixelData, x, y);
-  const fillColor = hexToRgb(selectedColor);
+  // Add initial pixel to queue
+  var n = 0;
+  queue[n++] = x;
+  queue[n++] = y;
 
-  if (!colorsMatch(startColor, fillColor)) {
-    const pixelStack = [[x, y]];
+  // Mark initial pixel as visited
+  var i = x + y * width;
+  visited[i] = 1;
+  rgba[i * 4 + 0] = color[0];
+  rgba[i * 4 + 1] = color[1];
+  rgba[i * 4 + 2] = color[2];
+  rgba[i * 4 + 3] = 255;
 
-    while (pixelStack.length) {
-      let newPos, x, y, pixelPos, reachLeft, reachRight;
-      newPos = pixelStack.pop();
-      x = newPos[0];
-      y = newPos[1];
+  // While we have not processed all pixels yet
+  while (n > 0) {
+    // Pop pixel from queue
+    var y = queue[--n];
+    var x = queue[--n];
 
-      pixelPos = (y * canvasWidth + x) * 4;
-      while (y-- >= 0 && matchStartColor(pixelPos, startColor, pixelData)) {
-        pixelPos -= canvasWidth * 4;
-      }
-      pixelPos += canvasWidth * 4;
-      ++y;
-      reachLeft = false;
-      reachRight = false;
-      while (y++ < canvasHeight - 1 && matchStartColor(pixelPos, startColor, pixelData)) {
-        colorPixel(pixelPos, fillColor, pixelData);
+    // Scan to the left
+    var x1 = x;
+    while (x1 > 0 && !visited[x1 - 1 + y * width] && colorsMatch(startColor, getPixelColor(rgba, x1 - 1, y, width))) x1--;
 
-        if (x > 0) {
-          if (matchStartColor(pixelPos - 4, startColor, pixelData)) {
-            if (!reachLeft) {
-              pixelStack.push([x - 1, y]);
-              reachLeft = true;
-            }
-          } else if (reachLeft) {
-            reachLeft = false;
-          }
+    // Scan to the right
+    var x2 = x;
+    while (x2 < width - 1 && !visited[x2 + 1 + y * width] && colorsMatch(startColor, getPixelColor(rgba, x2 + 1, y, width))) x2++;
+
+    // Mark all pixels in scan line as visited
+    for (var x = x1; x <= x2; x++) {
+      var i = x + y * width;
+      visited[i] = 1;
+      rgba[i * 4 + 0] = color[0];
+      rgba[i * 4 + 1] = color[1];
+      rgba[i * 4 + 2] = color[2];
+      rgba[i * 4 + 3] = 255;
+    }
+
+    // Add pixels above scan line to queue
+    if (y + 1 < height) {
+      for (var x = x1; x <= x2; x++) {
+        var i = x + (y + 1) * width;
+        if (!visited[i] && colorsMatch(startColor, getPixelColor(rgba, x, y + 1, width))) {
+          visited[i] = 1;
+          queue[n++] = x;
+          queue[n++] = y + 1;
         }
-
-        if (x < canvasWidth - 1) {
-          if (matchStartColor(pixelPos + 4, startColor, pixelData)) {
-            if (!reachRight) {
-              pixelStack.push([x + 1, y]);
-              reachRight = true;
-            }
-          } else if (reachRight) {
-            reachRight = false;
-          }
-        }
-
-        pixelPos += canvasWidth * 4;
       }
     }
 
-    ctx.putImageData(imageData, 0, 0);
+    // Add pixels below scan line to queue
+    if (y > 0) {
+      for (var x = x1; x <= x2; x++) {
+        var i = x + (y - 1) * width;
+        if (!visited[i] && colorsMatch(startColor, getPixelColor(rgba, x, y - 1, width))) {
+          visited[i] = 1;
+          queue[n++] = x;
+          queue[n++] = y - 1;
+        }
+      }
+    }
   }
 }
 
-function getPixelColor(data, x, y) {
-  const index = (y * canvas.width + x) * 4;
-  return [data[index], data[index + 1], data[index + 2], data[index + 3]];
+function floodFill(x, y) {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const rgba = imageData.data;
+  const fillColor = hexToRgb(selectedColor);
+
+  floodfill(rgba, canvas.width, canvas.height, x, y, fillColor);
+
+  ctx.putImageData(imageData, 0, 0);
 }
 
-function hexToRgb(hex) {
-  const bigint = parseInt(hex.slice(1), 16);
-  return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255, 255];
+function getPixelColor(data, x, y, width) {
+  const index = (y * width + x) * 4;
+  return [data[index], data[index + 1], data[index + 2], data[index + 3]];
 }
 
 function colorsMatch(color1, color2) {
   return color1[0] === color2[0] && color1[1] === color2[1] && color1[2] === color2[2] && color1[3] === color2[3];
 }
 
-function matchStartColor(pixelPos, startColor, data) {
-  return (
-    data[pixelPos] === startColor[0] &&
-    data[pixelPos + 1] === startColor[1] &&
-    data[pixelPos + 2] === startColor[2] &&
-    data[pixelPos + 3] === startColor[3]
-  );
+function hexToRgb(hex) {
+  const normal = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (normal) {
+    return normal.slice(1).map((e) => parseInt(e, 16));
+  }
+
+  const shorthand = hex.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+  if (shorthand) {
+    return shorthand.slice(1).map((e) => 0x11 * parseInt(e, 16));
+  }
+
+  return null;
 }
-
-function colorPixel(pixelPos, fillColor, data) {
-  data[pixelPos] = fillColor[0];
-  data[pixelPos + 1] = fillColor[1];
-  data[pixelPos + 2] = fillColor[2];
-  data[pixelPos + 3] = fillColor[3];
-}
-
-// Update the event listener
-
 
 function eraseAtPoint(clientX, clientY) {
   const clickedElement = document.elementFromPoint(clientX, clientY);
