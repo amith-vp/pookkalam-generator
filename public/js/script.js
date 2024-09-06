@@ -374,19 +374,31 @@ function Curve(parent, x1, y1) {
 }
 
 function handleCurveDrawing(e, point) {
-  if (e.type === 'mousedown') {
+  if (e.type === 'mousedown' || e.type === 'touchstart') {
     if (clickState === 0) {
-      // First click: start a new curve
+      // First touch: start a new curve
       currentCurve = new Curve(this, point.x, point.y);
       curvePoints = [point];
       clickState++;
-    } else if (clickState === 1) {
-      // Second click: set end point
+    }
+  } else if (e.type === 'mousemove' || e.type === 'touchmove') {
+    if (clickState === 1) {
+      // Preview end point
+      currentCurve.to(point.x, point.y);
+      currentCurve.preview();
+    } else if (clickState === 2) {
+      // Preview control point
+      currentCurve.arc(point.x, point.y);
+      currentCurve.preview();
+    }
+  } else if (e.type === 'mouseup' || e.type === 'touchend') {
+    if (clickState === 1) {
+      // Set end point
       currentCurve.to(point.x, point.y);
       curvePoints.push(point);
       clickState++;
     } else if (clickState === 2) {
-      // Third click: set control point and finish curve
+      // Set control point and finish curve
       currentCurve.arc(point.x, point.y);
       currentCurve.finalize();
       curvePoints.push(point);
@@ -396,15 +408,17 @@ function handleCurveDrawing(e, point) {
       currentCurve = null;
       curvePoints = [];
     }
-  } else if (e.type === 'mousemove') {
-    if (clickState === 1) {
-      // Preview end point
-      currentCurve.to(point.x, point.y);
-      currentCurve.preview();
-    } else if (clickState === 2) {
-      // Preview control point
+  } else if (e.type === 'mouseleave' || e.type === 'touchcancel') {
+    if (clickState === 2) {
+      // Finish curve on touch leave
       currentCurve.arc(point.x, point.y);
-      currentCurve.preview();
+      currentCurve.finalize();
+      curvePoints.push(point);
+      clickState = 0;
+      updatePaths();
+      generateMandala();
+      currentCurve = null;
+      curvePoints = [];
     }
   }
 }
@@ -451,7 +465,7 @@ function handleDrawing(e) {
     handleShapeDrawing(e, point);
   }
 
-  if ((e.type === 'mouseup' || e.type === 'touchend' || e.type === 'touchcancel') && currentTool === 'curve' && clickState === 0) {
+  if ((e.type === 'mouseup' ) && currentTool === 'curve' && clickState === 0) {
     updatePaths();
     generateMandala();
   }
