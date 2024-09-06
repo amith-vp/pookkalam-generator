@@ -165,9 +165,15 @@ function updateTriangleTemplate() {
 
   triangleTemplate.appendChild(gridGroup);
 }
+// ... existing code ...
+
+let svgBlobUrl = null;
 
 function generateMandala() {
+  // Clear the existing canvas content
   ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+  // Generate new mandala SVG content
   const angle = 360 / segments;
   const overlap = 0.1; // Small overlap to hide gaps
   const shapesHTML = Array(segments).fill('').map((_, i) => {
@@ -188,22 +194,37 @@ function generateMandala() {
       ${shapesHTML}
     </svg>
   `;
-  // Draw the mandala on the canvas
+
   const svgData = new XMLSerializer().serializeToString(mandala.querySelector('svg'));
-  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
+  const newSvgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+
+  // Revoke the old Blob URL if it exists
+  if (svgBlobUrl) {
+    URL.revokeObjectURL(svgBlobUrl);
+  }
+
+  // Create a new Blob URL
+  svgBlobUrl = URL.createObjectURL(newSvgBlob);
   const img = new Image();
-  img.src = url;
+  img.src = svgBlobUrl;
+
   img.onload = () => {
     ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
-    URL.revokeObjectURL(url);
+    // Revoke the Blob URL after the image is loaded to free up memory
+    URL.revokeObjectURL(svgBlobUrl);
+    svgBlobUrl = null;
   };
-  canvas.addEventListener('click', (e) => {
-    const x = Math.floor(e.offsetX * scaleFactor);
-    const y = Math.floor(e.offsetY * scaleFactor);
-    floodFill(x, y);
-  });
 }
+
+// Add the canvas click event listener only once
+canvas.addEventListener('click', (e) => {
+  const x = Math.floor(e.offsetX * scaleFactor);
+  const y = Math.floor(e.offsetY * scaleFactor);
+  floodFill(x, y);
+});
+
+
+// ... existing code ...
 
 
 function drawGridlines() {
@@ -239,114 +260,25 @@ document.getElementById('gridlines').addEventListener('change', (e) => {
     gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
   }
 });
-function floodfill(rgba, width, height, x, y, color) {
-  var visited = new Uint8Array(width * height);
-  var queue = new Int32Array(2 * width * height);
+const worker = new Worker('../public/js/floodFillWorker.js');
 
-  // Get the color of the starting pixel
-  var startColor = [
-    rgba[(y * width + x) * 4 + 0],
-    rgba[(y * width + x) * 4 + 1],
-    rgba[(y * width + x) * 4 + 2],
-    rgba[(y * width + x) * 4 + 3]
-  ];
-
-  // Add initial pixel to queue
-  var n = 0;
-  queue[n++] = x;
-  queue[n++] = y;
-
-  // Mark initial pixel as visited
-  var i = x + y * width;
-  visited[i] = 1;
-  rgba[i * 4 + 0] = color[0];
-  rgba[i * 4 + 1] = color[1];
-  rgba[i * 4 + 2] = color[2];
-  rgba[i * 4 + 3] = 255;
-
-  // While we have not processed all pixels yet
-  while (n > 0) {
-    // Pop pixel from queue
-    var y = queue[--n];
-    var x = queue[--n];
-
-    // Scan to the left
-    var x1 = x;
-    while (x1 > 0 && !visited[x1 - 1 + y * width] && colorsMatch(startColor, getPixelColor(rgba, x1 - 1, y, width))) x1--;
-
-    // Scan to the right
-    var x2 = x;
-    while (x2 < width - 1 && !visited[x2 + 1 + y * width] && colorsMatch(startColor, getPixelColor(rgba, x2 + 1, y, width))) x2++;
-
-    // Mark all pixels in scan line as visited
-    for (var x = x1; x <= x2; x++) {
-      var i = x + y * width;
-      visited[i] = 1;
-      rgba[i * 4 + 0] = color[0];
-      rgba[i * 4 + 1] = color[1];
-      rgba[i * 4 + 2] = color[2];
-      rgba[i * 4 + 3] = 255;
-    }
-
-    // Add pixels above scan line to queue
-    if (y + 1 < height) {
-      for (var x = x1; x <= x2; x++) {
-        var i = x + (y + 1) * width;
-        if (!visited[i] && colorsMatch(startColor, getPixelColor(rgba, x, y + 1, width))) {
-          visited[i] = 1;
-          queue[n++] = x;
-          queue[n++] = y + 1;
-        }
-      }
-    }
-
-    // Add pixels below scan line to queue
-    if (y > 0) {
-      for (var x = x1; x <= x2; x++) {
-        var i = x + (y - 1) * width;
-        if (!visited[i] && colorsMatch(startColor, getPixelColor(rgba, x, y - 1, width))) {
-          visited[i] = 1;
-          queue[n++] = x;
-          queue[n++] = y - 1;
-        }
-      }
-    }
-  }
-}
+worker.onmessage = function(event) {
+  const rgba = event.data;
+  const imageData = new ImageData(new Uint8ClampedArray(rgba), canvas.width, canvas.height);
+  ctx.putImageData(imageData, 0, 0);
+};
 
 function floodFill(x, y) {
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const rgba = imageData.data;
   const fillColor = hexToRgb(selectedColor);
 
-  floodfill(rgba, canvas.width, canvas.height, x, y, fillColor);
-
-  ctx.putImageData(imageData, 0, 0);
+  worker.postMessage({ rgba, width: canvas.width, height: canvas.height, x, y, color: fillColor });
 }
-
-function getPixelColor(data, x, y, width) {
-  const index = (y * width + x) * 4;
-  return [data[index], data[index + 1], data[index + 2], data[index + 3]];
-}
-
-function colorsMatch(color1, color2) {
-  return color1[0] === color2[0] && color1[1] === color2[1] && color1[2] === color2[2] && color1[3] === color2[3];
-}
-
 function hexToRgb(hex) {
-  const normal = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  if (normal) {
-    return normal.slice(1).map((e) => parseInt(e, 16));
-  }
-
-  const shorthand = hex.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
-  if (shorthand) {
-    return shorthand.slice(1).map((e) => 0x11 * parseInt(e, 16));
-  }
-
-  return null;
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : null;
 }
-
 function eraseAtPoint(clientX, clientY) {
   const clickedElement = document.elementFromPoint(clientX, clientY);
   if (clickedElement && clickedElement.parentNode === drawingLayer) {
