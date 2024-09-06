@@ -160,7 +160,7 @@
                     <div class="bg-card rounded-md p-1 flex flex-col gap-1">
                         <div class="bg-card rounded-md pb-2 flex items-center justify-center">
                             <div
-                                id="drawingArea" class="w-full h-[300px] bg-primary-foreground rounded-md flex justify-center items-center">
+                                id="drawingArea" class="w-full h-[300px] bg-primary-foreground rounded-md flex justify-center items-center dragging-container">
 
                                 <svg id="triangleTemplate" width="192.62984752301145" height="249.80622641951618" viewBox="0 0 192.62984752301145 249.80622641951618" class="mb-2" style="cursor: crosshair;">
                                     <defs></defs>
@@ -316,7 +316,7 @@
                     </div>
                 </div>
                 <div class="w-[1px] bg-border h-full"></div>
-                <div id="shapearea" class="grid grid-cols-2 gap-1 items-start justify-start sm:w-100">
+                <div id="shapearea" class="dragging-container grid grid-cols-2 gap-1 items-start justify-start sm:w-100">
                     <div class="bg-card rounded-md p-2 flex flex-col gap-1">
                         <svg class="shape-menu" width="30" height="30" viewBox="0 0 111 117" data-shape="custom1">
                             <path
@@ -619,6 +619,10 @@
 <script src="../public/js/script.js"></script>
 
 <style>
-
+.dragging-container,
+.dragging-container * {
+  -ms-touch-action: none;
+  touch-action: none;
+}
 </style>
 </html>
