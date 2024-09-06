@@ -1,5 +1,6 @@
 function showInitialIndication() {
-  console.log("showInitialIndication called");
+  const hasSeenIndication = localStorage.getItem('hasSeenIndication');
+  if (!hasSeenIndication) {
   
   // Create a semi-transparent overlay
   const overlay = document.createElement('div');
@@ -36,8 +37,9 @@ function showInitialIndication() {
 
   setTimeout(removeHighlights, 10000); // Remove after 10 seconds
   document.addEventListener('click', removeHighlights);
+  localStorage.setItem('hasSeenIndication', 'true');
 }
-
+}
 function highlightElement(element, title, description) {
   if (!element) {
     console.error(`Element not found for highlighting: ${title}`);
