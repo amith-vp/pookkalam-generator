@@ -15,7 +15,7 @@ let paths = [];
 let undoStack = [];
 let redoStack = [];
 let currentMode = 'drag';
-let segments = 12;
+let segments = 7;
 let currentTool = 'pencil';
 let currentColor = '#000000';
 let currentLineWidth = 1;
@@ -1117,6 +1117,7 @@ function updateSegmentsUI() {
 
 
 document.addEventListener('DOMContentLoaded', function () {
+
   initializeEventListeners();
   Array.from(drawingLayer.children).forEach(makeShapeInteractive);
 
@@ -1124,6 +1125,12 @@ document.addEventListener('DOMContentLoaded', function () {
   toggleMode();
 
   updateTriangleTemplate();
+  showInitialIndication();
+
+
+  updatePaths();
+  generateMandala();
+
   const layoutDownloadBtn = document.getElementById('layoutdownloadBtn');
   const layoutDownloadOptions = document.getElementById('layoutdownloadOptions');
   const outputDownloadBtn = document.getElementById('outputdownloadBtn');
@@ -1169,54 +1176,59 @@ document.addEventListener('DOMContentLoaded', function () {
     outputDownloadOptions.classList.add('hidden');
   });
 
-  function isMobileDevice() {
-    let hasTouchScreen = false;
+ // ... existing code ...
 
-    if ("maxTouchPoints" in navigator) {
-      hasTouchScreen = navigator.maxTouchPoints > 0;
-    } else if ("msMaxTouchPoints" in navigator) {
-      hasTouchScreen = navigator.msMaxTouchPoints > 0;
-    } else {
-      const mQ = window.matchMedia && matchMedia("(pointer:coarse)");
-      if (mQ && mQ.media === "(pointer:coarse)") {
-        hasTouchScreen = !!mQ.matches;
-      } else if ('orientation' in window) {
-        hasTouchScreen = true; // deprecated, but good fallback
-      } else {
-        // Only as a last resort, fall back to user agent sniffing
-        const UA = navigator.userAgent;
-        hasTouchScreen = (
-          /\b(BlackBerry|webOS|iPhone|IEMobile)\b/i.test(UA) ||
-          /\b(Android|Windows Phone|iPad|iPod)\b/i.test(UA)
-        );
-      }
-    }
+// ... existing code ...
+  
 
-    return hasTouchScreen;
-  }
 
-  if (isMobileDevice()) {
-    var modal = document.getElementById("mobileModal");
-    var continueButton = document.getElementById("continueButton");
 
-    modal.classList.remove("hidden");
-
-    continueButton.addEventListener("click", function () {
-      modal.classList.add("hidden");
-    });
-  }
-  var isFirefox = typeof InstallTrigger !== 'undefined';
-  if (isFirefox) {
-    document.getElementById('firefoxModal').classList.remove('hidden');
-  }
-
-  // Add event listener to the "Continue Anyway" button
-  document.getElementById('firefoxContinueButton').addEventListener('click', function () {
-    document.getElementById('firefoxModal').classList.add('hidden');
   });
-});
 
 document.getElementById('navbarToggle').addEventListener('click', function () {
   const navbarCollapse = document.getElementById('navbarCollapse');
   navbarCollapse.classList.toggle('open');
 });
+
+
+function checkCompatibility() {
+  let hasTouchScreen = false;
+  let isFirefox = typeof InstallTrigger !== 'undefined';
+  
+  const modal = document.getElementById("compatibilityModal");
+  const message = document.getElementById("compatibilityMessage");
+  const continueButton = document.getElementById("continueButton");
+
+  if ("maxTouchPoints" in navigator) {
+    hasTouchScreen = navigator.maxTouchPoints > 0;
+  } else if ("msMaxTouchPoints" in navigator) {
+    hasTouchScreen = navigator.msMaxTouchPoints > 0;
+  } else {
+    const mQ = window.matchMedia && matchMedia("(pointer:coarse)");
+    if (mQ && mQ.media === "(pointer:coarse)") {
+      hasTouchScreen = !!mQ.matches;
+    } else if ('orientation' in window) {
+      hasTouchScreen = true; // deprecated, but good fallback
+    } else {
+      const UA = navigator.userAgent;
+      hasTouchScreen = (
+        /\b(BlackBerry|webOS|iPhone|IEMobile)\b/i.test(UA) ||
+        /\b(Android|Windows Phone|iPad|iPod)\b/i.test(UA)
+      );
+    }
+  }
+
+  if (isFirefox) {
+    message.textContent = "This site is not fully compatible with Firefox. Please switch to a Chromium-based browser for the best experience.";
+    modal.classList.remove("hidden");
+  } else if (hasTouchScreen) {
+    message.textContent = "This site is designed for desktop devices. Some functionality may not work on mobile devices.";
+    modal.classList.remove("hidden");
+  }
+  continueButton.addEventListener("click", function () {
+    modal.classList.add("hidden");
+  });
+ 
+}
+
+

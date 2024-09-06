@@ -1,0 +1,53 @@
+.full-page-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+}
+
+.highlight-box {
+  border: 2px solid #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  z-index: 9999;
+}
+
+.highlight-label {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #333;
+  z-index: 10000;
+}
+
+.highlight-label h3 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.highlight-label p {
+  margin: 0;
+}
+
+  
+  .drag-arrow {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 100px;
+    height: 50px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>') no-repeat center center; /* Adjusted arrow direction */
+    transform: translate(-50%, -50%);
+    animation: arrowMove 2s infinite;
+    z-index: 1003;
+  }
+  
+  @keyframes arrowMove {
+    0%, 100% { transform: translate(-60%, -50%); }
+    50% { transform: translate(-40%, -50%); }
+  }
