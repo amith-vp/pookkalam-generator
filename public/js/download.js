@@ -196,32 +196,47 @@ function downloadPDF(canvasId, filename) {
   if (document.getElementById('gridlines').checked) {
     drawGridlinesOnCanvas(tempCtx, tempCanvas.width, tempCanvas.height);
   }
-  addLogoToCanvas(tempCtx, tempCanvas.width, tempCanvas.height);
 
-  // Use the temporary canvas for creating the PDF
-  if (tempCanvas && tempCanvas.toDataURL) {
-    const imgData = tempCanvas.toDataURL('image/jpeg', 1); // Use JPEG format with reduced quality
-    const pdf = new window.jspdf.jsPDF('landscape', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const canvasAspectRatio = tempCanvas.width / tempCanvas.height;
-    const pageAspectRatio = pageWidth / pageHeight;
+  // Ensure the logo is loaded before adding it to the canvas
+  const logo = new Image();
+  logo.src = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"></path><path d="M12 7.5V9"></path><path d="M7.5 12H9"></path><path d="M16.5 12H15"></path><path d="M12 16.5V15"></path><path d="m8 8 1.88 1.88"></path><path d="M14.12 9.88 16 8"></path><path d="m8 16 1.88-1.88"></path><path d="M14.12 14.12 16 16"></path></svg>');
 
-    let imgWidth, imgHeight;
-    if (canvasAspectRatio > pageAspectRatio) {
-      imgWidth = pageWidth;
-      imgHeight = pageWidth / canvasAspectRatio;
+  logo.onload = function() {
+    tempCtx.drawImage(logo, 10, tempCanvas.height - 78, 58, 58); // Increased size to 58x58
+    tempCtx.fillStyle = '#000';
+    tempCtx.font = '50px Arial'; // Increased font size to 50px
+    tempCtx.fillText('Pookkalam.dev', 80, tempCanvas.height - 30); // Adjusted position
+
+    // Use the temporary canvas for creating the PDF
+    if (tempCanvas && tempCanvas.toDataURL) {
+      const imgData = tempCanvas.toDataURL('image/jpeg', 1); // Use JPEG format with reduced quality
+      const pdf = new window.jspdf.jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const canvasAspectRatio = tempCanvas.width / tempCanvas.height;
+      const pageAspectRatio = pageWidth / pageHeight;
+
+      let imgWidth, imgHeight;
+      if (canvasAspectRatio > pageAspectRatio) {
+        imgWidth = pageWidth;
+        imgHeight = pageWidth / canvasAspectRatio;
+      } else {
+        imgHeight = pageHeight;
+        imgWidth = pageHeight * canvasAspectRatio;
+      }
+
+      const xOffset = (pageWidth - imgWidth) / 2;
+      const yOffset = (pageHeight - imgHeight) / 2;
+      pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
+      pdf.save(filename);
     } else {
-      imgHeight = pageHeight;
-      imgWidth = pageHeight * canvasAspectRatio;
+      console.error('Canvas element not found or toDataURL method not supported.');
     }
+  };
 
-    const xOffset = (pageWidth - imgWidth) / 2;
-    const yOffset = (pageHeight - imgHeight) / 2;
-    pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
-    pdf.save(filename);
-  } else {
-    console.error('Canvas element not found or toDataURL method not supported.');
+  // Ensure the logo is drawn even if it's already loaded
+  if (logo.complete) {
+    logo.onload();
   }
 }
 

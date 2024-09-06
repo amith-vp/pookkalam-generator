@@ -28,7 +28,7 @@ const ctx = canvas.getContext('2d');
 const gridCanvas = document.getElementById('gridCanvas');
 const gridCtx = gridCanvas.getContext('2d');
 
-const scaleFactor = 3;
+const scaleFactor = 2;
 const displayWidth = window.innerWidth > 640 ? 600 : 300;
 const displayHeight = window.innerWidth > 640 ? 600 : 300;
 
