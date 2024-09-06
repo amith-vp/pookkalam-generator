@@ -45,10 +45,16 @@ ctx.scale(scaleFactor, scaleFactor);
 
 function getPointInSVG(e) {
   const pt = triangleTemplate.createSVGPoint();
-  pt.x = e.clientX;
-  pt.y = e.clientY;
+  if (e.touches) {
+    pt.x = e.touches[0].clientX;
+    pt.y = e.touches[0].clientY;
+  } else {
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+  }
   return pt.matrixTransform(triangleTemplate.getScreenCTM().inverse());
 }
+
 
 function updatePaths() {
   paths = Array.from(drawingLayer.children).map(child => {
@@ -410,9 +416,30 @@ const COLORS = {
 };
 
 // Update handleDrawing function
+
+// ... existing code ...
+
+let lastTouchPoint = null;
+
 function handleDrawing(e) {
   if (!isDrawingMode) return;
-  const point = getPointInSVG(e);
+
+  let point;
+  if (e.type.startsWith('touch')) {
+    if (e.touches.length > 0) {
+      point = getPointInSVG(e.touches[0]);
+    } else if (e.changedTouches.length > 0) {
+      point = getPointInSVG(e.changedTouches[0]);
+    } else {
+      point = lastTouchPoint;
+    }
+  } else {
+    point = getPointInSVG(e);
+  }
+
+  if (e.type === 'touchmove') {
+    lastTouchPoint = point;
+  }
 
   if (currentTool === 'rotate') {
     handleRotation(e, point);
@@ -424,46 +451,59 @@ function handleDrawing(e) {
     handleShapeDrawing(e, point);
   }
 
-  // If it's a mouseup event and we're using the curve tool, update paths and generate mandala
-  if (e.type === 'mouseup' && currentTool === 'curve' && clickState === 0) {
+  if ((e.type === 'mouseup' || e.type === 'touchend' || e.type === 'touchcancel') && currentTool === 'curve' && clickState === 0) {
     updatePaths();
     generateMandala();
   }
 }
+// ... existing code ...
 
 function handleRotation(e, point) {
-  if (e.type === 'mousedown') {
+  if (e.type === 'mousedown' || e.type === 'touchstart') {
     const target = e.target;
     if (isDraggableShape(target)) {
       isDrawing = true;
       startRotation(target, point);
       document.addEventListener('mousemove', handleRotationMove);
       document.addEventListener('mouseup', handleRotationEnd);
+      document.addEventListener('touchmove', handleRotationMove);
+      document.addEventListener('touchend', handleRotationEnd);
     }
   }
 }
 
 function handleEraser(e) {
-  if (e.type === 'mousedown') {
+  let clientX, clientY;
+
+  if (e.type.startsWith('touch')) {
+    const touch = e.touches[0] || e.changedTouches[0];
+    clientX = touch.clientX;
+    clientY = touch.clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+
+  if (e.type === 'mousedown' || e.type === 'touchstart') {
     isDrawing = true;
-    eraseAtPoint(e.clientX, e.clientY);
-  } else if (e.type === 'mousemove' && isDrawing) {
-    eraseAtPoint(e.clientX, e.clientY);
-  } else if (['mouseup', 'mouseleave'].includes(e.type)) {
+    eraseAtPoint(clientX, clientY);
+  } else if ((e.type === 'mousemove' || e.type === 'touchmove') && isDrawing) {
+    eraseAtPoint(clientX, clientY);
+  } else if (['mouseup', 'mouseleave', 'touchend', 'touchcancel'].includes(e.type)) {
     isDrawing = false;
   }
 }
 
 function handleShapeDrawing(e, point) {
-  if (e.type === 'mousedown') {
+  if (e.type === 'mousedown' || e.type === 'touchstart') {
     isDrawing = true;
     startPoint = currentTool === 'circle' ? getTriangleAnglePoint() : point;
     currentPath = document.createElementNS("http://www.w3.org/2000/svg", getShapeElement());
     setShapeAttributes(currentPath, startPoint);
     drawingLayer.appendChild(currentPath);
-  } else if (e.type === 'mousemove' && isDrawing) {
+  } else if (e.type === 'mousemove' || (e.type === 'touchmove' && isDrawing)) {
     updateShape(currentPath, startPoint, point);
-  } else if (['mouseup', 'mouseleave'].includes(e.type) && isDrawing) {
+  } else if (['mouseup', 'mouseleave', 'touchend', 'touchcancel'].includes(e.type) && isDrawing) {
     isDrawing = false;
     updateShape(currentPath, startPoint, point);
     updatePaths();
@@ -656,16 +696,17 @@ function toggleButtonStyles(button, isActive) {
 }
 
 function addDrawingEventListeners() {
-  ['mousedown', 'mousemove', 'mouseup', 'mouseleave'].forEach(event =>
+  ['mousedown', 'mousemove', 'mouseup', 'mouseleave', 'touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(event =>
     triangleTemplate.addEventListener(event, handleDrawing)
   );
 }
 
 function removeDrawingEventListeners() {
-  ['mousedown', 'mousemove', 'mouseup', 'mouseleave'].forEach(event =>
+  ['mousedown', 'mousemove', 'mouseup', 'mouseleave', 'touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(event =>
     triangleTemplate.removeEventListener(event, handleDrawing)
   );
 }
+
 
 function updateShapeInteractivity() {
   Array.from(drawingLayer.children).forEach(shape => {
