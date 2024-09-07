@@ -119,35 +119,41 @@ function updateTriangleTemplate() {
   if (existingGridGroup) {
     existingGridGroup.remove();
   }
-
   // Create new gridGroup
   const gridGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
   gridGroup.id = 'gridGroup';
   gridGroup.setAttribute('clip-path', 'url(#triangleClip)');
 
-  // Horizontal gridlines
-  const numHorizontalLines = 10;
-  for (let i = 1; i < numHorizontalLines; i++) {
-    const y = i * (viewBoxHeight / numHorizontalLines);
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute('x1', 0);
-    line.setAttribute('y1', y);
-    line.setAttribute('x2', viewBoxWidth);
-    line.setAttribute('y2', y);
-    line.setAttribute('stroke', '#e0e0e0');
-    line.setAttribute('stroke-width', '0.5');
-    gridGroup.appendChild(line);
+  // Get the center point from getTriangleAnglePoint()
+  const centerPoint = getTriangleAnglePoint();
+
+  // Circular gridlines
+  const numCircularLines = 10;
+  console.log(height);
+  console.log(arcHeight);
+  for (let i = 1; i <= numCircularLines; i++) {
+    const radius = (i * (height+arcHeight)) / numCircularLines;
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute('cx', centerPoint.x);
+    circle.setAttribute('cy', centerPoint.y);
+    circle.setAttribute('r', radius);
+    circle.setAttribute('stroke', '#e0e0e0');
+    circle.setAttribute('stroke-width', '0.5');
+    circle.setAttribute('fill', 'none');
+    gridGroup.appendChild(circle);
   }
 
   // Vertical gridlines
-  const numVerticalLines = 10;
-  for (let i = 1; i < numVerticalLines; i++) {
-    const x = i * (viewBoxWidth / numVerticalLines);
+  const numVerticalLines = 40; // Use the number of sectors for vertical lines
+  for (let i = 0; i < numVerticalLines; i++) {
+    const angle = (i * 360 / numVerticalLines) * (Math.PI / 180);
+    const x = centerPoint.x + (height+arcHeight) * Math.cos(angle);
+    const y = centerPoint.y + (height+arcHeight) * Math.sin(angle);
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute('x1', x);
-    line.setAttribute('y1', 0);
+    line.setAttribute('x1', centerPoint.x);
+    line.setAttribute('y1', centerPoint.y);
     line.setAttribute('x2', x);
-    line.setAttribute('y2', viewBoxHeight);
+    line.setAttribute('y2', y);
     line.setAttribute('stroke', '#e0e0e0');
     line.setAttribute('stroke-width', '0.5');
     gridGroup.appendChild(line);
@@ -155,17 +161,16 @@ function updateTriangleTemplate() {
 
   // Central line from triangle angle
   const centralLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  centralLine.setAttribute('x1', xOffset + width / 2);
-  centralLine.setAttribute('y1', 0);
-  centralLine.setAttribute('x2', xOffset + width / 2);
-  centralLine.setAttribute('y2', viewBoxHeight);
+  centralLine.setAttribute('x1', centerPoint.x);
+  centralLine.setAttribute('y1', centerPoint.y);
+  centralLine.setAttribute('x2', centerPoint.x);
+  centralLine.setAttribute('y2', 0);
   centralLine.setAttribute('stroke', '#e0e0e0');
   centralLine.setAttribute('stroke-width', '0.5');
   gridGroup.appendChild(centralLine);
 
   triangleTemplate.appendChild(gridGroup);
 }
-// ... existing code ...
 
 let svgBlobUrl = null;
 
@@ -224,7 +229,6 @@ canvas.addEventListener('click', (e) => {
 });
 
 
-// ... existing code ...
 
 
 function drawGridlines() {
