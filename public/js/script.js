@@ -70,18 +70,30 @@ function updatePaths() {
 }
 
 function saveProgressToSessionStorage() {
-  sessionStorage.setItem('mandalaPaths', JSON.stringify(paths));
+  const state = {
+    paths,
+    segments,
+    radius: radiusSlider.value
+  };
+  sessionStorage.setItem('pookkalamState', JSON.stringify(state));
 }
 
 function loadProgressFromSessionStorage() {
-  const savedPaths = sessionStorage.getItem('mandalaPaths');
-  if (savedPaths) {
-    paths = JSON.parse(savedPaths);
+  const savedState = sessionStorage.getItem('pookkalamState');
+  if (savedState) {
+    const { paths: savedPaths, segments: savedSegments, radius: savedRadius } = JSON.parse(savedState);
+    paths = savedPaths;
+    segments = savedSegments;
+    radiusSlider.value = savedRadius;
+    slicesSlider.value = savedSegments;
+    slicesValue.textContent = savedSegments;
+    radiusValue.textContent = savedRadius;
     drawingLayer.innerHTML = paths.join('');
+    updateTriangleTemplate();
     generateMandala();
+    updateSegmentsUI();
   }
 }
-
 function updateTriangleTemplate() {
   const angle = 360 / segments;
   const radians = (angle * Math.PI) / 180;
