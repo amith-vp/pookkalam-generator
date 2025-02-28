@@ -1,5 +1,11 @@
 [
   {
+    "id": 96,
+    "name": " my design",
+    "canvasPng": "96-onam-pookkalam-design-canvas.png",
+    "svgPng": "96-onam-pookkalam-design-layout.png"
+  },
+  {
     "id": 89,
     "name": " maveli",
     "canvasPng": "89-onam-pookkalam-design-canvas.png",
