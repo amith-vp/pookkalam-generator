@@ -4,7 +4,7 @@
   "description": "download static pookkalam designs",
   "main": "download_design.js",
   "dependencies": {
-    "axios": "^1.8.4",
-    "dotenv": "^16.4.7"
+    "axios": "^1.11.0",
+    "dotenv": "^16.6.1"
   }
 }
