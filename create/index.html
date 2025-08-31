@@ -553,9 +553,12 @@
                     <svg id="mandala" width="600" height="600" viewBox="0 0 600 600" class="border border-gray-300"
                         style="display: none;">
                         <rect width="600" height="600" fill="#ffffff" />
-                        <!-- ... existing code ... -->
                     </svg>
-                    <!-- Add this line -->
+                    <!-- Magnifier lens overlay -->
+                    <div id="magnifier" class="absolute hidden pointer-events-none rounded-full border-2 border-gray-500 shadow-lg"
+                        style="width: 240px; height: 240px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+                        <canvas id="magnifierCanvas" width="240" height="240"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="w-full sm:w-64 bg-[#f0f0f0] border-l">

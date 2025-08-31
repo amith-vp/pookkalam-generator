@@ -1,6 +1,7 @@
 const freeformBtn = document.getElementById('freeformBtn');
 const dragModeBtn = document.getElementById('dragModeBtn');
 const triangleTemplate = document.getElementById('triangleTemplate');
+const drawingArea = document.getElementById('drawingArea');
 const drawingLayer = document.getElementById('drawingLayer');
 const mandala = document.getElementById('mandala');
 const clearBtn = document.getElementById('clearBtn');
@@ -28,6 +29,19 @@ const ctx = canvas.getContext('2d');
 const gridCanvas = document.getElementById('gridCanvas');
 const gridCtx = gridCanvas.getContext('2d');
 
+// Magnifier elements and config
+const magnifier = document.getElementById('magnifier');
+const magnifierCanvas = document.getElementById('magnifierCanvas');
+const magnifierCtx = magnifierCanvas ? magnifierCanvas.getContext('2d') : null;
+const magnifierSize = 240; // px of lens canvas
+let lensRadius = magnifierSize / 2;
+let magnifierZoom = 2.2; // how much to zoom inside larger lens
+let magnifierDocked = true; // fixed position vs follow cursor
+
+// Offscreen preview canvas to reflect live triangle drawing over the base canvas
+const previewCanvas = document.createElement('canvas');
+const previewCtx = previewCanvas.getContext('2d');
+
 const scaleFactor = 2;
 const displayWidth = window.innerWidth > 640 ? 600 : 300;
 const displayHeight = window.innerWidth > 640 ? 600 : 300;
@@ -37,6 +51,10 @@ canvas.height = displayHeight * scaleFactor;
 canvas.style.width = `${displayWidth}px`;
 canvas.style.height = `${displayHeight}px`;
 ctx.scale(scaleFactor, scaleFactor);
+
+// Match preview canvas to main canvas size
+previewCanvas.width = canvas.width;
+previewCanvas.height = canvas.height;
 
 // canvas.width = 500;
 // canvas.height = 500;
@@ -53,6 +71,282 @@ function getPointInSVG(e) {
     pt.y = e.clientY;
   }
   return pt.matrixTransform(triangleTemplate.getScreenCTM().inverse());
+}
+
+// Convert a point in triangleTemplate SVG space to mandala canvas display coordinates (before device scale)
+function triangleSvgPointToCanvasDisplay(point) {
+  // Find bottom-center of template inside mandala (translate values used in generateMandala)
+  const translateX = 300 - triangleTemplate.width.baseVal.value / 2;
+  const translateY = 300 - triangleTemplate.height.baseVal.value;
+  return {
+    x: translateX + point.x,
+    y: translateY + point.y,
+  };
+}
+
+function showMagnifier() {
+  if (!magnifier) return;
+  magnifier.classList.remove('hidden');
+  // Ensure position set when shown
+  updateMagnifierPosition(0, 0);
+}
+
+function hideMagnifier() {
+  if (!magnifier) return;
+  magnifier.classList.add('hidden');
+}
+
+function updateMagnifierPosition(clientX, clientY) {
+  if (!magnifier) return;
+  // If docked, keep it fixed at a corner of the drawing area
+  const container = canvas.parentElement; // the relative wrapper
+  const rect = container.getBoundingClientRect();
+  if (magnifierDocked) {
+    const padding = 8;
+    // Dock to top-right by default
+    const lensLeft = rect.width - magnifierSize - padding;
+    const lensTop = padding;
+    magnifier.style.left = `${lensLeft}px`;
+    magnifier.style.top = `${lensTop}px`;
+    return;
+  }
+
+  // Otherwise, position near the cursor
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const offset = 18;
+  let lensLeft = x + offset - lensRadius;
+  let lensTop = y + offset - lensRadius;
+  lensLeft = Math.max(0, Math.min(lensLeft, rect.width - magnifierSize));
+  lensTop = Math.max(0, Math.min(lensTop, rect.height - magnifierSize));
+  magnifier.style.left = `${lensLeft}px`;
+  magnifier.style.top = `${lensTop}px`;
+}
+
+function drawMagnifierAt(pointInSvg) {
+  if (!magnifierCtx) return;
+
+  // Map to canvas display coordinates (0..displayWidth/Height)
+  const disp = triangleSvgPointToCanvasDisplay(pointInSvg);
+
+  // Clear and clip to circle
+  magnifierCtx.clearRect(0, 0, magnifierCanvas.width, magnifierCanvas.height);
+  magnifierCtx.save();
+  magnifierCtx.beginPath();
+  magnifierCtx.arc(lensRadius, lensRadius, lensRadius - 1, 0, Math.PI * 2);
+  magnifierCtx.closePath();
+  magnifierCtx.clip();
+
+  // Compute source rect on the visible canvas (display space). Our visible canvas is scaled CSS down from high-DPI canvas.
+  // The rendering context 'ctx' is scaled by scaleFactor. But we can sample from the underlying real canvas by using its bitmap.
+  // Approach: use the on-screen canvas element by drawing it as an image source; coordinates must be in CSS pixels.
+
+  // Source size in display pixels to cover lens when zoomed
+  const srcW = magnifierSize / magnifierZoom;
+  const srcH = magnifierSize / magnifierZoom;
+  const srcX = disp.x - srcW / 2;
+  const srcY = disp.y - srcH / 2;
+
+  // Clamp source rect within display bounds
+  const clampedSrcX = Math.max(0, Math.min(srcX, displayWidth - srcW));
+  const clampedSrcY = Math.max(0, Math.min(srcY, displayHeight - srcH));
+
+  // Draw from visible canvas element. drawImage uses CSS pixels when source is an HTMLCanvasElement and sx/sy/sWidth/sHeight are in its intrinsic pixel space.
+  // Our canvas intrinsic size is display*scaleFactor, so scale source rect accordingly.
+  const sx = clampedSrcX * scaleFactor;
+  const sy = clampedSrcY * scaleFactor;
+  const sWidth = srcW * scaleFactor;
+  const sHeight = srcH * scaleFactor;
+
+  magnifierCtx.imageSmoothingEnabled = true;
+  magnifierCtx.drawImage(previewCanvas, sx, sy, sWidth, sHeight, 0, 0, magnifierSize, magnifierSize);
+
+  // Additionally clip magnified content to triangle shape so only inside triangle shows
+  try {
+    const translateX = 300 - triangleTemplate.width.baseVal.value / 2;
+    const translateY = 300 - triangleTemplate.height.baseVal.value;
+    const pathD = triangleTemplate.querySelector('path').getAttribute('d');
+    const triPath = new Path2D(pathD);
+    magnifierCtx.save();
+    magnifierCtx.globalCompositeOperation = 'destination-in';
+    // Map canvas display space to lens space
+    magnifierCtx.setTransform(
+      magnifierZoom, 0,
+      0, magnifierZoom,
+      -clampedSrcX * magnifierZoom,
+      -clampedSrcY * magnifierZoom
+    );
+    magnifierCtx.translate(translateX, translateY);
+    magnifierCtx.fill(triPath);
+    magnifierCtx.restore();
+  } catch (_) {
+    // ignore if Path2D or setTransform not supported
+  }
+
+  // Crosshair for precision
+  magnifierCtx.strokeStyle = 'rgba(0,0,0,0.35)';
+  magnifierCtx.lineWidth = 1;
+  magnifierCtx.beginPath();
+  magnifierCtx.moveTo(lensRadius, 0);
+  magnifierCtx.lineTo(lensRadius, magnifierSize);
+  magnifierCtx.moveTo(0, lensRadius);
+  magnifierCtx.lineTo(magnifierSize, lensRadius);
+  magnifierCtx.stroke();
+
+  magnifierCtx.restore();
+}
+
+// Utility: is the svg point inside triangle path
+function isPointInsideTriangle(pointInSvg) {
+  const trianglePath = triangleTemplate.querySelector('path');
+  if (!trianglePath) return true;
+  if (typeof trianglePath.isPointInFill === 'function') {
+    try { return trianglePath.isPointInFill(pointInSvg); } catch (_) {}
+  }
+  const bbox = trianglePath.getBBox();
+  return (
+    pointInSvg.x >= bbox.x && pointInSvg.x <= bbox.x + bbox.width &&
+    pointInSvg.y >= bbox.y && pointInSvg.y <= bbox.y + bbox.height
+  );
+}
+
+// Preview canvas render: base canvas + live drawing overlay clipped to triangle
+let previewRafPending = false;
+function requestPreviewRedraw() {
+  if (previewRafPending) return;
+  previewRafPending = true;
+  requestAnimationFrame(() => {
+    redrawPreviewNow();
+    previewRafPending = false;
+  });
+}
+
+function redrawPreviewNow() {
+  // Draw base canvas
+  previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  previewCtx.drawImage(canvas, 0, 0);
+
+  // Overlay global square grid (if any)
+  try { previewCtx.drawImage(gridCanvas, 0, 0); } catch (_) {}
+
+  // Overlay triangle drawing mapped to base canvas position
+  const translateX = 300 - triangleTemplate.width.baseVal.value / 2;
+  const translateY = 300 - triangleTemplate.height.baseVal.value;
+  previewCtx.save();
+  previewCtx.scale(scaleFactor, scaleFactor);
+  previewCtx.translate(translateX, translateY);
+  const trianglePathEl = triangleTemplate.querySelector('path');
+  if (trianglePathEl) {
+    try {
+      const triP = new Path2D(trianglePathEl.getAttribute('d'));
+      previewCtx.save();
+      // Draw internal triangle grid (polar/lines) beneath drawing
+      drawTriangleInternalGridToCtx(previewCtx);
+      previewCtx.clip(triP);
+      drawDrawingLayerToCtx(previewCtx);
+      previewCtx.restore();
+      // Draw grid again on top if desired for visibility
+      drawTriangleInternalGridToCtx(previewCtx);
+    } catch (_) {
+      drawDrawingLayerToCtx(previewCtx);
+    }
+  } else {
+    drawTriangleInternalGridToCtx(previewCtx);
+    drawDrawingLayerToCtx(previewCtx);
+  }
+  // Draw triangle outline on top for clarity
+  previewCtx.restore();
+  if (trianglePathEl) {
+    try {
+      const triOutline = new Path2D(trianglePathEl.getAttribute('d'));
+      previewCtx.save();
+      previewCtx.scale(scaleFactor, scaleFactor);
+      previewCtx.translate(translateX, translateY);
+      previewCtx.strokeStyle = 'rgba(0,0,0,0.5)';
+      previewCtx.lineWidth = 1;
+      previewCtx.stroke(triOutline);
+      previewCtx.restore();
+    } catch (_) {}
+  }
+}
+
+function drawDrawingLayerToCtx(targetCtx) {
+  Array.from(drawingLayer.children).forEach(el => {
+    targetCtx.save();
+    if (typeof el.getCTM === 'function') {
+      const m = el.getCTM();
+      if (m) targetCtx.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+    }
+    const stroke = el.getAttribute('stroke') || '#000';
+    const fill = el.getAttribute('fill') || 'none';
+    const lineWidth = parseFloat(el.getAttribute('stroke-width') || '1');
+    targetCtx.strokeStyle = stroke;
+    targetCtx.fillStyle = fill;
+    targetCtx.lineWidth = lineWidth;
+
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'path') {
+      const d = el.getAttribute('d');
+      if (d) {
+        try {
+          const p = new Path2D(d);
+          if (fill !== 'none') targetCtx.fill(p);
+          targetCtx.stroke(p);
+        } catch (_) {}
+      }
+    } else if (tag === 'circle') {
+      const cx = parseFloat(el.getAttribute('cx') || '0');
+      const cy = parseFloat(el.getAttribute('cy') || '0');
+      const r = parseFloat(el.getAttribute('r') || '0');
+      targetCtx.beginPath();
+      targetCtx.arc(cx, cy, r, 0, Math.PI * 2);
+      if (fill !== 'none') targetCtx.fill();
+      targetCtx.stroke();
+    } else if (tag === 'line') {
+      const x1 = parseFloat(el.getAttribute('x1') || '0');
+      const y1 = parseFloat(el.getAttribute('y1') || '0');
+      const x2 = parseFloat(el.getAttribute('x2') || '0');
+      const y2 = parseFloat(el.getAttribute('y2') || '0');
+      targetCtx.beginPath();
+      targetCtx.moveTo(x1, y1);
+      targetCtx.lineTo(x2, y2);
+      targetCtx.stroke();
+    }
+    targetCtx.restore();
+  });
+}
+
+// Draw the triangle template's internal grid (gridGroup) into a 2D context
+function drawTriangleInternalGridToCtx(targetCtx) {
+  const grp = triangleTemplate.querySelector('#gridGroup');
+  if (!grp) return;
+  Array.from(grp.children).forEach(el => {
+    targetCtx.save();
+    // gridGroup is already in triangleTemplate coords, CTM is identity under our mapping
+    const stroke = el.getAttribute('stroke') || '#e0e0e0';
+    const lineWidth = parseFloat(el.getAttribute('stroke-width') || '0.5');
+    targetCtx.strokeStyle = stroke;
+    targetCtx.lineWidth = lineWidth;
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'circle') {
+      const cx = parseFloat(el.getAttribute('cx') || '0');
+      const cy = parseFloat(el.getAttribute('cy') || '0');
+      const r = parseFloat(el.getAttribute('r') || '0');
+      targetCtx.beginPath();
+      targetCtx.arc(cx, cy, r, 0, Math.PI * 2);
+      targetCtx.stroke();
+    } else if (tag === 'line') {
+      const x1 = parseFloat(el.getAttribute('x1') || '0');
+      const y1 = parseFloat(el.getAttribute('y1') || '0');
+      const x2 = parseFloat(el.getAttribute('x2') || '0');
+      const y2 = parseFloat(el.getAttribute('y2') || '0');
+      targetCtx.beginPath();
+      targetCtx.moveTo(x1, y1);
+      targetCtx.lineTo(x2, y2);
+      targetCtx.stroke();
+    }
+    targetCtx.restore();
+  });
 }
 
 function updatePaths() {
@@ -230,6 +524,8 @@ function generateMandala() {
     // Revoke the Blob URL after the image is loaded to free up memory
     URL.revokeObjectURL(svgBlobUrl);
     svgBlobUrl = null;
+    // Sync preview with updated base canvas
+    requestPreviewRedraw();
   };
 }
 
@@ -282,6 +578,8 @@ worker.onmessage = function(event) {
   const rgba = event.data;
   const imageData = new ImageData(new Uint8ClampedArray(rgba), canvas.width, canvas.height);
   ctx.putImageData(imageData, 0, 0);
+  // Update preview after flood fill updates the canvas
+  requestPreviewRedraw();
 };
 
 function floodFill(x, y) {
@@ -355,16 +653,19 @@ function handleCurveDrawing(e, point) {
       currentCurve = new Curve(this, point.x, point.y);
       curvePoints = [point];
       clickState++;
+      requestPreviewRedraw();
     }
   } else if (e.type === 'mousemove' || e.type === 'touchmove') {
     if (clickState === 1) {
       // Preview end point
       currentCurve.to(point.x, point.y);
       currentCurve.preview();
+      requestPreviewRedraw();
     } else if (clickState === 2) {
       // Preview control point
       currentCurve.arc(point.x, point.y);
       currentCurve.preview();
+      requestPreviewRedraw();
     }
   } else if (e.type === 'mouseup' || e.type === 'touchend') {
     if (clickState === 1) {
@@ -372,6 +673,7 @@ function handleCurveDrawing(e, point) {
       currentCurve.to(point.x, point.y);
       curvePoints.push(point);
       clickState++;
+      requestPreviewRedraw();
     } else if (clickState === 2) {
       // Set control point and finish curve
       currentCurve.arc(point.x, point.y);
@@ -382,6 +684,7 @@ function handleCurveDrawing(e, point) {
       generateMandala();
       currentCurve = null;
       curvePoints = [];
+      requestPreviewRedraw();
     }
   } else if (e.type === 'mouseleave' || e.type === 'touchcancel') {
     if (clickState === 2) {
@@ -394,6 +697,7 @@ function handleCurveDrawing(e, point) {
       generateMandala();
       currentCurve = null;
       curvePoints = [];
+      requestPreviewRedraw();
     }
   }
 }
@@ -488,8 +792,10 @@ function handleShapeDrawing(e, point) {
     currentPath = document.createElementNS("http://www.w3.org/2000/svg", getShapeElement());
     setShapeAttributes(currentPath, startPoint);
     drawingLayer.appendChild(currentPath);
+    requestPreviewRedraw();
   } else if ((e.type === 'mousemove' || e.type === 'touchmove') && isDrawing) {
     updateShape(currentPath, startPoint, point);
+    requestPreviewRedraw();
   } else if (['mouseup', 'mouseleave', 'touchend', 'touchcancel'].includes(e.type) && isDrawing) {
     isDrawing = false;
     updateShape(currentPath, startPoint, point);
@@ -504,6 +810,7 @@ function handleRotationMove(e) {
     const shape = document.querySelector('[data-rotating="true"]');
     if (shape) {
       continueRotation(shape, point);
+      requestPreviewRedraw();
     }
   }
 }
@@ -632,6 +939,7 @@ function clearShapes() {
   drawingLayer.innerHTML = '';
   sessionStorage.removeItem('mandalaPaths'); // Clear session storage
   generateMandala();
+  requestPreviewRedraw();
 }
 
 function undo() {
@@ -642,6 +950,7 @@ function undo() {
     drawingLayer.innerHTML = paths.join('');
     generateMandala();
     updateShapeInteractivity();
+    requestPreviewRedraw();
   }
 }
 
@@ -652,6 +961,7 @@ function redo() {
     drawingLayer.innerHTML = paths.join('');
     generateMandala();
     updateShapeInteractivity();
+    requestPreviewRedraw();
   }
 }
 
@@ -687,12 +997,80 @@ function addDrawingEventListeners() {
   ['mousedown', 'mousemove', 'mouseup', 'mouseleave', 'touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(event =>
     triangleTemplate.addEventListener(event, handleDrawing)
   );
+  // Magnifier hooks
+  if (drawingArea) {
+    drawingArea.addEventListener('mouseenter', onTemplateEnter);
+    drawingArea.addEventListener('mouseleave', onTemplateLeave);
+    drawingArea.addEventListener('mousemove', onTemplateMove);
+    drawingArea.addEventListener('touchstart', onTemplateTouchStart, { passive: true });
+    drawingArea.addEventListener('touchmove', onTemplateTouchMove, { passive: true });
+    drawingArea.addEventListener('touchend', onTemplateTouchEnd);
+  }
 }
 
 function removeDrawingEventListeners() {
   ['mousedown', 'mousemove', 'mouseup', 'mouseleave', 'touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(event =>
     triangleTemplate.removeEventListener(event, handleDrawing)
   );
+  if (drawingArea) {
+    drawingArea.removeEventListener('mouseenter', onTemplateEnter);
+    drawingArea.removeEventListener('mouseleave', onTemplateLeave);
+    drawingArea.removeEventListener('mousemove', onTemplateMove);
+    drawingArea.removeEventListener('touchstart', onTemplateTouchStart);
+    drawingArea.removeEventListener('touchmove', onTemplateTouchMove);
+    drawingArea.removeEventListener('touchend', onTemplateTouchEnd);
+  }
+}
+
+function onTemplateEnter(e) {
+  // Redraw preview so magnifier has fresh base
+  requestPreviewRedraw();
+  showMagnifier();
+  // Position immediately on enter
+  const clientX = (e.touches && e.touches[0]?.clientX) || e.clientX || 0;
+  const clientY = (e.touches && e.touches[0]?.clientY) || e.clientY || 0;
+  updateMagnifierPosition(clientX, clientY);
+}
+
+function onTemplateLeave(e) {
+  // Only hide when the pointer leaves the drawing area container
+  hideMagnifier();
+}
+
+function onTemplateMove(e) {
+  const svgPt = getPointInSVG(e);
+  // Keep lens visible as long as cursor is inside the drawingArea container
+  showMagnifier();
+  // Ensure preview matches current state during hover/move
+  requestPreviewRedraw();
+  drawMagnifierAt(svgPt);
+  updateMagnifierPosition(e.clientX, e.clientY);
+}
+
+function onTemplateTouchStart(e) {
+  if (!e.touches || e.touches.length === 0) return;
+  showMagnifier();
+  const t = e.touches[0];
+  const svgPt = getPointInSVG(e);
+  if (!isPointInsideTriangle(svgPt)) return;
+  requestPreviewRedraw();
+  drawMagnifierAt(svgPt);
+  updateMagnifierPosition(t.clientX, t.clientY);
+}
+
+function onTemplateTouchMove(e) {
+  if (!e.touches || e.touches.length === 0) return;
+  const t = e.touches[0];
+  const svgPt = getPointInSVG(e);
+  // Keep lens visible while touch remains inside the drawingArea container
+  showMagnifier();
+  requestPreviewRedraw();
+  drawMagnifierAt(svgPt);
+  updateMagnifierPosition(t.clientX, t.clientY);
+}
+
+function onTemplateTouchEnd(e) {
+  hideMagnifier();
 }
 
 
@@ -720,6 +1098,7 @@ function updateShapeInteractivity() {
             target.setAttribute('transform', `translate(${x}, ${y}) scale(${currentScaleX}, ${currentScaleY}) rotate(${currentRotation} ${centerX} ${centerY})`);
             target.setAttribute('data-x', x);
             target.setAttribute('data-y', y);
+            requestPreviewRedraw();
           },
           end() {
             updatePaths();
@@ -783,6 +1162,7 @@ function updateShapeInteractivity() {
             target.setAttribute('data-y', newY);
             target.setAttribute('data-scale-x', newScaleX);
             target.setAttribute('data-scale-y', newScaleY);
+            requestPreviewRedraw();
           },
           end() {
             updatePaths();
@@ -1013,6 +1393,7 @@ function initializeEventListeners() {
 
           currentMode = 'drag';
           toggleMode();
+            requestPreviewRedraw();
         }
         event.target.style.transform = '';
         event.target.removeAttribute('data-x');
@@ -1026,12 +1407,14 @@ function initializeEventListeners() {
     slicesValue.textContent = segments;
     updateTriangleTemplate();
     generateMandala();
+    requestPreviewRedraw();
   });
 
   radiusSlider.addEventListener('input', (e) => {
     radiusValue.textContent = e.target.value;
     updateTriangleTemplate();
     generateMandala();
+    requestPreviewRedraw();
   });
 
   document.querySelectorAll('.color-circle').forEach(circle => {
@@ -1127,6 +1510,7 @@ function generateRandomMandala() {
     updatePaths();
     generateMandala();
     mandala.classList.add('random-mandala');
+  requestPreviewRedraw();
 
   } else {
     console.error('Unable to parse triangle path data');
@@ -1160,6 +1544,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   updatePaths();
   generateMandala();
+
+  // Ensure magnifier is hidden initially
+  hideMagnifier();
 
   const layoutDownloadBtn = document.getElementById('layoutdownloadBtn');
   const layoutDownloadOptions = document.getElementById('layoutdownloadOptions');
