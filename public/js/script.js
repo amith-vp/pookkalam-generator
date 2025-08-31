@@ -586,8 +586,9 @@ function floodFill(x, y) {
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const rgba = imageData.data;
   const fillColor = hexToRgb(selectedColor);
+  const tolerance = 25; // Increased tolerance for better edge handling
 
-  worker.postMessage({ rgba, width: canvas.width, height: canvas.height, x, y, color: fillColor });
+  worker.postMessage({ rgba, width: canvas.width, height: canvas.height, x, y, color: fillColor, tolerance });
 }
 function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
